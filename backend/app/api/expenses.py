@@ -1,10 +1,10 @@
 from collections import defaultdict
+from typing import Any
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
 from app.api.dependencies import get_owned_trip
 from app.core.errors import NotFoundError
 from app.models.database import get_db
-from app.models.entities import Trip
+from app.repositories.base import EntityDoc
 from app.repositories.entities import ExpenseRepository
 from app.repositories.versions import VersionRepository
 from app.schemas.common import success_response
@@ -14,10 +14,16 @@ from app.schemas.itinerary import CanonicalItinerary
 router = APIRouter(prefix="/trips/{trip_id}", tags=["Expenses"])
 
 
+def _iso(dt: Any) -> str:
+    if hasattr(dt, "isoformat"):
+        return dt.isoformat()
+    return str(dt or "")
+
+
 @router.get("/budget")
 def get_trip_budget(
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     version_repo = VersionRepository(db)
     v = version_repo.get_latest(trip.id)
@@ -31,8 +37,8 @@ def get_trip_budget(
 @router.post("/expenses", status_code=status.HTTP_201_CREATED)
 def log_expense(
     exp_in: ExpenseCreate,
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     repo = ExpenseRepository(db)
     expense = repo.create(
@@ -50,15 +56,15 @@ def log_expense(
             category=expense.category,
             amount=expense.amount,
             note=expense.note,
-            spent_at=expense.spent_at.isoformat()
+            spent_at=_iso(expense.spent_at)
         ).model_dump()
     )
 
 
 @router.get("/expenses")
 def list_expenses(
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     repo = ExpenseRepository(db)
     expenses = repo.list_by_trip(trip.id)
@@ -83,8 +89,10 @@ def list_expenses(
             category=e.category,
             amount=e.amount,
             note=e.note,
-            spent_at=e.spent_at.isoformat()
+            spent_at=_iso(e.spent_at)
         ))
+
+    remaining = max(0, planned_total - total_spent)
 
     return success_response(
         ExpenseTotalsResponse(
@@ -92,6 +100,6 @@ def list_expenses(
             totals_by_category=dict(totals_by_cat),
             total_spent=total_spent,
             planned_total=planned_total,
-            remaining_budget=max(0, planned_total - total_spent)
+            remaining_budget=remaining
         ).model_dump()
     )

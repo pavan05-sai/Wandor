@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 from app.schemas.preferences import PreferencesSchema
 from app.schemas.itinerary import Travelers, CanonicalItinerary
@@ -21,8 +21,8 @@ class TripSettingsUpdate(BaseModel):
 
 
 class TripSummary(BaseModel):
-    id: int
-    user_id: int
+    id: Union[int, str]
+    user_id: Union[int, str]
     title: str
     destination_id: str
     destination_name: str

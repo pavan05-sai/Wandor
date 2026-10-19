@@ -1,0 +1,10 @@
+[tool.pytest.ini_options]
+pythonpath = ["backend"]
+testpaths = ["backend/tests"]
+asyncio_mode = "auto"
+
+[tool.pyright]
+include = ["backend"]
+extraPaths = ["backend"]
+pythonVersion = "3.11"
+pythonPlatform = "Windows"

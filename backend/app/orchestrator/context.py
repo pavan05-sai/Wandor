@@ -1,6 +1,5 @@
-from typing import Any, Dict, List, Optional
-from sqlalchemy.orm import Session
-from app.models.entities import Place, Trip
+from typing import Any, Dict, List, Optional, Union
+from app.repositories.base import EntityDoc
 from app.repositories.places import PlaceRepository
 from app.repositories.trips import TripRepository
 from app.repositories.versions import VersionRepository
@@ -11,9 +10,9 @@ from app.tools.registry import ToolRegistry
 class AgentContext:
     def __init__(
         self,
-        trip: Trip,
+        trip: Any,
         itinerary: Optional[CanonicalItinerary],
-        catalog_places: List[Place],
+        catalog_places: List[Any],
         tool_registry: ToolRegistry
     ):
         self.trip = trip
@@ -22,7 +21,7 @@ class AgentContext:
         self.tool_registry = tool_registry
 
 
-def build_agent_context(db: Session, trip_id: int) -> AgentContext:
+def build_agent_context(db: Any, trip_id: Union[str, int]) -> AgentContext:
     trip_repo = TripRepository(db)
     version_repo = VersionRepository(db)
     place_repo = PlaceRepository(db)

@@ -14,7 +14,7 @@ import type { ChatMessage, ChatResponseData } from '../types';
 interface AiConciergeDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  tripId?: number;
+  tripId?: number | string;
   onSendMessage: (msg: string) => Promise<ChatResponseData | null>;
   messages: ChatMessage[];
   onRefreshTrip: () => void;

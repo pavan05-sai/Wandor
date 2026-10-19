@@ -1,15 +1,13 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, get_owned_trip
 from app.core.errors import BudgetInvalidError, DestinationUnsupportedError
 from app.models.database import get_db
-from app.models.entities import Trip, User
+from app.repositories.base import EntityDoc
 from app.repositories.trips import TripRepository
 from app.repositories.versions import VersionRepository
 from app.schemas.common import success_response
-from app.schemas.itinerary import CanonicalItinerary
 from app.schemas.trips import TripCreateRequest, TripSummary
 from app.services.catalog import CatalogService
 from app.workers.budget import BudgetEngine
@@ -17,15 +15,21 @@ from app.workers.budget import BudgetEngine
 router = APIRouter(tags=["Trips"])
 
 
+def _iso(dt: Any) -> str:
+    if hasattr(dt, "isoformat"):
+        return dt.isoformat()
+    return str(dt or "")
+
+
 @router.get("/destinations")
-def get_destinations(db: Session = Depends(get_db)):
+def get_destinations(db: Any = Depends(get_db)):
     """List supported travel destinations."""
     dests = CatalogService.get_destinations(db=db)
     return success_response([d.model_dump() for d in dests])
 
 
 @router.get("/destinations/search")
-def search_destinations(q: str = Query(..., min_length=2), db: Session = Depends(get_db)):
+def search_destinations(q: str = Query(..., min_length=2), db: Any = Depends(get_db)):
     """Search global destinations using free Nominatim geocoding and presets."""
     dests = CatalogService.search_destinations(db, q)
     return success_response([d.model_dump() for d in dests])
@@ -34,8 +38,8 @@ def search_destinations(q: str = Query(..., min_length=2), db: Session = Depends
 @router.post("/trips", status_code=status.HTTP_201_CREATED)
 def create_trip(
     req: TripCreateRequest,
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    user: EntityDoc = Depends(get_current_user),
+    db: Any = Depends(get_db)
 ):
     # 1. Validate destination (or dynamically resolve from geocoding)
     dest = CatalogService.get_destination_by_id(req.destination_id, db=db)
@@ -82,8 +86,27 @@ def create_trip(
         mode="live"
     )
 
+    trip_summary = TripSummary(
+        id=trip.id,
+        user_id=trip.user_id,
+        title=trip.title,
+        destination_id=trip.destination_id,
+        destination_name=dest.name if dest else trip.destination_id,
+        start_date=trip.start_date,
+        end_date=trip.end_date,
+        num_days=trip.num_days,
+        status=trip.status,
+        current_version=trip.current_version,
+        mode=trip.mode,
+        total_budget=trip.budget,
+        estimated_total=trip.budget,
+        budget_status="ok",
+        created_at=_iso(trip.created_at)
+    )
+
     return success_response({
         "trip_id": trip.id,
+        "trip": trip_summary.model_dump(),
         "title": trip.title,
         "destination_id": trip.destination_id,
         "start_date": trip.start_date,
@@ -91,12 +114,12 @@ def create_trip(
         "num_days": trip.num_days,
         "status": trip.status,
         "current_version": trip.current_version,
-        "created_at": trip.created_at.isoformat()
+        "created_at": _iso(trip.created_at)
     })
 
 
 @router.get("/trips")
-def list_trips(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def list_trips(user: EntityDoc = Depends(get_current_user), db: Any = Depends(get_db)):
     repo = TripRepository(db)
     version_repo = VersionRepository(db)
     trips = repo.list_by_user(user.id)
@@ -107,13 +130,13 @@ def list_trips(user: User = Depends(get_current_user), db: Session = Depends(get
         latest_v = version_repo.get_latest(t.id)
 
         est_total = 0
-        tot_budget = 30000
+        tot_budget = t.budget if hasattr(t, "budget") and t.budget else 30000
         b_status = "ok"
 
         if latest_v and latest_v.json:
             b_block = latest_v.json.get("budget", {})
-            est_total = b_block.get("estimated_total", 0)
-            tot_budget = b_block.get("total_limit", 30000)
+            est_total = b_block.get("estimated_total", est_total)
+            tot_budget = b_block.get("total_limit", tot_budget)
             b_status = b_block.get("status", "ok")
 
         summaries.append(TripSummary(
@@ -131,7 +154,7 @@ def list_trips(user: User = Depends(get_current_user), db: Session = Depends(get
             total_budget=tot_budget,
             estimated_total=est_total,
             budget_status=b_status,
-            created_at=t.created_at.isoformat()
+            created_at=_iso(t.created_at)
         ))
 
     return success_response([s.model_dump() for s in summaries])
@@ -139,8 +162,8 @@ def list_trips(user: User = Depends(get_current_user), db: Session = Depends(get
 
 @router.get("/trips/{trip_id}")
 def get_trip(
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     version_repo = VersionRepository(db)
     latest_v = version_repo.get_latest(trip.id)
@@ -162,7 +185,7 @@ def get_trip(
         total_budget=itinerary_data.get("budget", {}).get("total_limit", 30000) if itinerary_data else 30000,
         estimated_total=itinerary_data.get("budget", {}).get("estimated_total", 0) if itinerary_data else 0,
         budget_status=itinerary_data.get("budget", {}).get("status", "ok") if itinerary_data else "ok",
-        created_at=trip.created_at.isoformat()
+        created_at=_iso(trip.created_at)
     )
 
     return success_response({
@@ -173,8 +196,8 @@ def get_trip(
 
 @router.delete("/trips/{trip_id}")
 def delete_trip(
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     repo = TripRepository(db)
     repo.delete(trip)

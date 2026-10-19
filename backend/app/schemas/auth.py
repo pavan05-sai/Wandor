@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -14,7 +14,7 @@ class LoginRequest(BaseModel):
 
 
 class UserResponse(BaseModel):
-    id: int
+    id: Union[int, str]
     email: str
     display_name: str
     created_at: Optional[str] = None

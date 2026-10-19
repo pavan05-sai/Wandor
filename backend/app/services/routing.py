@@ -1,8 +1,7 @@
 import math
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import httpx
-from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.repositories.entities import CacheRepository
@@ -28,7 +27,7 @@ class RoutingService:
     @classmethod
     def calculate_leg(
         cls,
-        db: Session,
+        db: Any,
         lat1: float,
         lng1: float,
         lat2: float,

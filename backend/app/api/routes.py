@@ -1,9 +1,9 @@
+from typing import Any
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
 from app.api.dependencies import get_owned_trip
 from app.core.errors import NotFoundError
 from app.models.database import get_db
-from app.models.entities import Trip
+from app.repositories.base import EntityDoc
 from app.repositories.versions import VersionRepository
 from app.schemas.common import success_response
 from app.schemas.itinerary import CanonicalItinerary
@@ -14,8 +14,8 @@ router = APIRouter(prefix="/trips/{trip_id}/routes", tags=["Routes"])
 @router.get("/{day_id}")
 def get_day_routes(
     day_id: str,
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     version_repo = VersionRepository(db)
     v = version_repo.get_latest(trip.id)

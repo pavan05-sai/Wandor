@@ -1,13 +1,12 @@
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Tuple
-from sqlalchemy.orm import Session
+from typing import Any, Dict, List, Optional, Tuple, Union
 from app.agents.concierge import ConciergeAgent
 from app.agents.planner import PlannerAgent
 from app.agents.replanner import ReplannerAgent
 from app.core.config import settings
 from app.core.errors import AppError, NotFoundError, ValidationError
 from app.core.logging import get_logger
-from app.models.entities import Place, Trip
+from app.repositories.base import EntityDoc
 from app.orchestrator.context import build_agent_context
 from app.orchestrator.pipeline import OrchestratorPipeline, PipelineResult
 from app.repositories.entities import ChatRepository, EventRepository, NotificationRepository
@@ -38,8 +37,8 @@ class Orchestrator:
     @classmethod
     def generate_trip(
         cls,
-        db: Session,
-        trip_id: int,
+        db: Any,
+        trip_id: Union[str, int],
         regenerate: bool = False
     ) -> Tuple[CanonicalItinerary, List[str], List[AlternativeOption]]:
         ctx = build_agent_context(db, trip_id)
@@ -82,16 +81,22 @@ class Orchestrator:
 
         # 1. Attempt AI Generation via PlannerAgent
         planner = PlannerAgent()
-        selection, planner_trace = planner.plan_trip(
-            destination_name=dest_ref.name,
-            destination_id=trip.destination_id,
-            num_days=trip.num_days,
-            travelers=travelers,
-            budget=total_budget,
-            preferences=preferences,
-            tool_registry=ctx.tool_registry
-        )
-        trace.extend(planner_trace)
+        selection: Optional[PlannerSelection] = None
+        try:
+            selection, planner_trace = planner.plan_trip(
+                destination_name=dest_ref.name,
+                destination_id=trip.destination_id,
+                num_days=trip.num_days,
+                travelers=travelers,
+                budget=total_budget,
+                preferences=preferences,
+                tool_registry=ctx.tool_registry
+            )
+            trace.extend(planner_trace)
+        except Exception as e:
+            selection = None
+            trace.append(f"Planner Agent error: {e}. Falling back to baseline planner.")
+            logger.warning(f"Planner Agent error: {e}")
 
         itinerary: Optional[CanonicalItinerary] = None
 
@@ -285,7 +290,7 @@ class Orchestrator:
         return itinerary, trace, alternatives
 
     @classmethod
-    def handle_chat(cls, db: Session, trip_id: int, message: str) -> ChatResponse:
+    def handle_chat(cls, db: Any, trip_id: Union[str, int], message: str) -> ChatResponse:
         ctx = build_agent_context(db, trip_id)
         if not ctx.itinerary:
             raise ValidationError("Please generate an itinerary first before using chat.", code="NO_ITINERARY")
@@ -369,7 +374,7 @@ class Orchestrator:
         )
 
     @classmethod
-    def revert_trip(cls, db: Session, trip_id: int, target_version: int) -> CanonicalItinerary:
+    def revert_trip(cls, db: Any, trip_id: Union[str, int], target_version: int) -> CanonicalItinerary:
         trip_repo = TripRepository(db)
         version_repo = VersionRepository(db)
 
@@ -419,7 +424,7 @@ class Orchestrator:
         return reverted_it
 
     @classmethod
-    def check_conditions_and_replan(cls, db: Session, trip_id: int) -> Tuple[List[Dict[str, Any]], Optional[CanonicalItinerary]]:
+    def check_conditions_and_replan(cls, db: Any, trip_id: Union[str, int]) -> Tuple[List[Dict[str, Any]], Optional[CanonicalItinerary]]:
         ctx = build_agent_context(db, trip_id)
         if not ctx.itinerary:
             return [], None
@@ -486,8 +491,8 @@ class Orchestrator:
     @classmethod
     def simulate_event(
         cls,
-        db: Session,
-        trip_id: int,
+        db: Any,
+        trip_id: Union[str, int],
         event_type: str = "weather",
         day_id: str = "day_3",
         severity: str = "high",

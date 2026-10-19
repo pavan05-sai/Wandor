@@ -1,10 +1,10 @@
 from collections import defaultdict
+from typing import Any
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, get_owned_trip
 from app.core.errors import NotFoundError
 from app.models.database import get_db
-from app.models.entities import Trip, User
+from app.repositories.base import EntityDoc
 from app.repositories.entities import ExpenseRepository
 from app.repositories.trips import TripRepository
 from app.repositories.versions import VersionRepository
@@ -16,8 +16,8 @@ router = APIRouter(tags=["Analytics"])
 
 @router.get("/trips/{trip_id}/analytics")
 def get_trip_analytics(
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     version_repo = VersionRepository(db)
     exp_repo = ExpenseRepository(db)
@@ -78,8 +78,8 @@ def get_trip_analytics(
 
 @router.get("/analytics/overview")
 def get_user_analytics_overview(
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    user: EntityDoc = Depends(get_current_user),
+    db: Any = Depends(get_db)
 ):
     trip_repo = TripRepository(db)
     exp_repo = ExpenseRepository(db)

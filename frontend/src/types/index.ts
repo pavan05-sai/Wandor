@@ -1,5 +1,5 @@
 export interface User {
-  id: number;
+  id: number | string;
   email: string;
   display_name: string;
   created_at?: string;
@@ -244,8 +244,8 @@ export interface CanonicalItinerary {
 }
 
 export interface TripSummary {
-  id: number;
-  user_id: number;
+  id: number | string;
+  user_id: number | string;
   title: string;
   destination_id: string;
   destination_name: string;
@@ -267,8 +267,8 @@ export interface TripDetailResponse {
 }
 
 export interface ChatMessage {
-  id: number;
-  trip_id: number;
+  id: number | string;
+  trip_id: number | string;
   role: 'user' | 'assistant';
   content: string;
   intent?: string | null;
@@ -285,8 +285,8 @@ export interface ChatResponseData {
 }
 
 export interface Expense {
-  id: number;
-  trip_id: number;
+  id: number | string;
+  trip_id: number | string;
   day_id?: string | null;
   category: string;
   amount: number;
@@ -295,9 +295,9 @@ export interface Expense {
 }
 
 export interface NotificationItem {
-  id: number;
-  user_id: number;
-  trip_id?: number | null;
+  id: number | string;
+  user_id: number | string;
+  trip_id?: number | string | null;
   type: string;
   title: string;
   body: string;

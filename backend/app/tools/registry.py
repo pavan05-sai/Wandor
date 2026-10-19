@@ -1,6 +1,4 @@
 from typing import Any, Callable, Dict, List, Optional
-from sqlalchemy.orm import Session
-from app.models.entities import Place
 from app.repositories.places import PlaceRepository
 from app.schemas.itinerary import CanonicalItinerary, Travelers
 from app.services.routing import RoutingService
@@ -10,7 +8,7 @@ from app.workers.candidates import CandidateRetriever
 
 
 class ToolRegistry:
-    def __init__(self, db: Session, itinerary: Optional[CanonicalItinerary] = None, destination_id: str = "dest_goa"):
+    def __init__(self, db: Any = None, itinerary: Optional[CanonicalItinerary] = None, destination_id: str = "dest_goa"):
         self.db = db
         self.itinerary = itinerary
         self.destination_id = destination_id

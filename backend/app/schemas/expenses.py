@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 
 
@@ -10,8 +10,8 @@ class ExpenseCreate(BaseModel):
 
 
 class ExpenseResponse(BaseModel):
-    id: int
-    trip_id: int
+    id: Union[int, str]
+    trip_id: Union[int, str]
     day_id: Optional[str] = None
     category: str
     amount: int

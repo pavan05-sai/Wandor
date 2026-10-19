@@ -1,5 +1,5 @@
+from typing import Any
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
 from app.core.errors import ConflictError, UnauthorizedError
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.database import get_db
@@ -10,8 +10,14 @@ from app.schemas.common import success_response
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
+def _iso(dt: Any) -> str:
+    if hasattr(dt, "isoformat"):
+        return dt.isoformat()
+    return str(dt or "")
+
+
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-def register(req: RegisterRequest, db: Session = Depends(get_db)):
+def register(req: RegisterRequest, db: Any = Depends(get_db)):
     repo = UserRepository(db)
     existing = repo.get_by_email(req.email)
     if existing:
@@ -23,12 +29,12 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
 
     return success_response({
         "token": token,
-        "user": UserResponse(id=user.id, email=user.email, display_name=user.display_name, created_at=user.created_at.isoformat())
+        "user": UserResponse(id=user.id, email=user.email, display_name=user.display_name, created_at=_iso(user.created_at))
     })
 
 
 @router.post("/login")
-def login(req: LoginRequest, db: Session = Depends(get_db)):
+def login(req: LoginRequest, db: Any = Depends(get_db)):
     repo = UserRepository(db)
     user = repo.get_by_email(req.email)
     if not user or not verify_password(req.password, user.password_hash):
@@ -37,12 +43,12 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     token = create_access_token({"sub": str(user.id), "email": user.email})
     return success_response({
         "token": token,
-        "user": UserResponse(id=user.id, email=user.email, display_name=user.display_name, created_at=user.created_at.isoformat())
+        "user": UserResponse(id=user.id, email=user.email, display_name=user.display_name, created_at=_iso(user.created_at))
     })
 
 
 @router.post("/demo")
-def demo_login(db: Session = Depends(get_db)):
+def demo_login(db: Any = Depends(get_db)):
     """One-click seeded demo user login."""
     repo = UserRepository(db)
     demo_email = "demo@tripplanner.ai"
@@ -54,5 +60,5 @@ def demo_login(db: Session = Depends(get_db)):
     token = create_access_token({"sub": str(user.id), "email": user.email})
     return success_response({
         "token": token,
-        "user": UserResponse(id=user.id, email=user.email, display_name=user.display_name, created_at=user.created_at.isoformat())
+        "user": UserResponse(id=user.id, email=user.email, display_name=user.display_name, created_at=_iso(user.created_at))
     })

@@ -7,7 +7,7 @@ interface NotificationsModalProps {
   isOpen: boolean;
   onClose: () => void;
   notifications: NotificationItem[];
-  onMarkRead: (id: number) => void;
+  onMarkRead: (id: number | string) => void;
 }
 
 export const NotificationsModal: React.FC<NotificationsModalProps> = ({

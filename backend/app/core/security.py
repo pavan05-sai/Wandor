@@ -4,7 +4,6 @@ import bcrypt
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.errors import NotFoundError, UnauthorizedError
 
@@ -46,14 +45,11 @@ def decode_access_token(token: str) -> Dict[str, Any]:
 
 def get_current_user_id(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme)
-) -> int:
+) -> str:
     if not credentials:
         raise UnauthorizedError(message="Authentication token missing")
     payload = decode_access_token(credentials.credentials)
     user_id = payload.get("sub")
     if not user_id:
         raise UnauthorizedError(message="Invalid token payload")
-    try:
-        return int(user_id)
-    except (ValueError, TypeError):
-        raise UnauthorizedError(message="Invalid user ID in token")
+    return str(user_id)

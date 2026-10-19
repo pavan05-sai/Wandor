@@ -1,10 +1,10 @@
+from typing import Any
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
 from app.api.dependencies import get_owned_trip
 from app.core.errors import NotFoundError
 from app.models.database import get_db
-from app.models.entities import Trip
 from app.orchestrator.orchestrator import Orchestrator
+from app.repositories.base import EntityDoc
 from app.repositories.versions import VersionRepository
 from app.schemas.common import success_response
 from app.schemas.itinerary import CanonicalItinerary
@@ -17,8 +17,8 @@ router = APIRouter(prefix="/trips/{trip_id}", tags=["Weather & Events"])
 
 @router.get("/weather")
 def get_trip_weather(
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     version_repo = VersionRepository(db)
     v = version_repo.get_latest(trip.id)
@@ -40,8 +40,8 @@ def get_trip_weather(
 
 @router.post("/events/check")
 def check_events(
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     events, replan_it = Orchestrator.check_conditions_and_replan(db, trip.id)
     return success_response({
@@ -54,19 +54,19 @@ def check_events(
 @router.post("/events/simulate")
 def simulate_event(
     sim_req: EventSimulateRequest,
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     event_dict, replan_it = Orchestrator.simulate_event(
         db=db,
         trip_id=trip.id,
         event_type=sim_req.type,
-        day_id=sim_req.day_id or "day_3",
+        day_id=sim_req.day_id,
         severity=sim_req.severity,
-        detail=sim_req.detail or "Simulated weather alert",
-        payload=sim_req.payload
+        detail=sim_req.detail or f"Simulated {sim_req.type} alert"
     )
     return success_response({
         "event": event_dict,
+        "simulated_event": event_dict,
         "itinerary": replan_it.model_dump() if replan_it else None
     })

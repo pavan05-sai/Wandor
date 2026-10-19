@@ -1,7 +1,6 @@
 import time
 from typing import Any, Dict, List, Optional
 import httpx
-from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.repositories.entities import CacheRepository
@@ -13,7 +12,7 @@ class GeocodingService:
     _last_request_time = 0.0
 
     @classmethod
-    def geocode_destination(cls, db: Optional[Session], query: str) -> Optional[Dict[str, Any]]:
+    def geocode_destination(cls, db: Optional[Any], query: str) -> Optional[Dict[str, Any]]:
         """Geocode a city or destination query to real coordinates and location metadata."""
         clean_q = query.lower().replace("dest_", "").replace("_", " ").strip()
         cache_key = f"nominatim_dest:{clean_q}"
@@ -62,7 +61,7 @@ class GeocodingService:
         return None
 
     @classmethod
-    def search_destinations(cls, db: Optional[Session], query: str) -> List[Dict[str, Any]]:
+    def search_destinations(cls, db: Optional[Any], query: str) -> List[Dict[str, Any]]:
         """Search global destinations with autocomplete support via Nominatim."""
         clean_q = query.lower().replace("dest_", "").replace("_", " ").strip()
         if not clean_q or len(clean_q) < 2:

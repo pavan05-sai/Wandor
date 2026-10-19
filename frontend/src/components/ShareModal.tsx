@@ -6,7 +6,7 @@ import { api } from '../services/api';
 interface ShareModalProps {
   isOpen: boolean;
   onClose: () => void;
-  tripId: number;
+  tripId: number | string;
 }
 
 export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, tripId }) => {

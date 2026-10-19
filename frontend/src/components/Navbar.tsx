@@ -7,8 +7,8 @@ interface NavbarProps {
   user: User | null;
   trips: TripSummary[];
   notifications: NotificationItem[];
-  currentTripId: number | null;
-  onSelectTrip: (id: number) => void;
+  currentTripId: number | string | null;
+  onSelectTrip: (id: number | string) => void;
   onOpenAuth: (mode: 'login' | 'register' | 'demo') => void;
   onLogout: () => void;
   onOpenPlan: () => void;

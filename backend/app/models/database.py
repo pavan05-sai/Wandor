@@ -1,31 +1,28 @@
+"""
+Database integration module.
+Routes get_db and init_db directly to MongoDB.
+"""
 from typing import Generator
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker, Session
-from app.core.config import settings
+from sqlalchemy.orm import declarative_base
+from app.db.mongodb import get_db as get_mongodb, init_db as init_mongodb
 
-# Handle SQLite connect_args
-connect_args = {}
-if settings.DATABASE_URL.startswith("sqlite"):
-    connect_args = {"check_same_thread": False}
-
-engine = create_engine(
-    settings.DATABASE_URL,
-    connect_args=connect_args,
-    pool_pre_ping=True,
-    echo=False
-)
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
-def get_db() -> Generator[Session, None, None]:
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+def get_db() -> Generator:
+    """Yield active MongoDB database instance for FastAPI dependencies."""
+    db = get_mongodb()
+    yield db
 
 
-def init_db():
-    Base.metadata.create_all(bind=engine)
+def init_db() -> None:
+    """Initialize MongoDB connection and create indexes."""
+    init_mongodb()
+
+
+# For backward-compatibility with tests or scripts that import SessionLocal
+class _SessionLocal:
+    def __call__(self):
+        return get_mongodb()
+
+SessionLocal = _SessionLocal()

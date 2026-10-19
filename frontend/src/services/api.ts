@@ -15,7 +15,8 @@ import type {
   VersionSummary
 } from '../types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const rawApiBase = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE = rawApiBase.replace(/\/+$/, '');
 
 class ApiClient {
   private token: string | null = null;
@@ -187,9 +188,10 @@ class ApiClient {
   }
 
   async revertVersion(id: number | string, version: number): Promise<CanonicalItinerary> {
-    return this.request<CanonicalItinerary>(`/trips/${id}/versions/${version}/revert`, {
+    const res = await this.request<any>(`/trips/${id}/versions/${version}/revert`, {
       method: 'POST',
     });
+    return (res.itinerary || res) as CanonicalItinerary;
   }
 
   async updateItem(
@@ -297,7 +299,7 @@ class ApiClient {
     return this.request<NotificationItem[]>(`/notifications?unread=${unreadOnly}`);
   }
 
-  async markNotificationRead(id: number): Promise<{ ok: boolean }> {
+  async markNotificationRead(id: number | string): Promise<{ ok: boolean }> {
     return this.request<{ ok: boolean }>(`/notifications/${id}/read`, {
       method: 'POST',
     });

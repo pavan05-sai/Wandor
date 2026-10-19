@@ -7,7 +7,7 @@ import type { Expense, ItineraryDay } from '../types';
 interface LogExpenseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  tripId: number;
+  tripId: number | string;
   days: ItineraryDay[];
   onExpenseAdded: (expense: Expense) => void;
 }

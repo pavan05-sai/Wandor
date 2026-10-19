@@ -1,9 +1,8 @@
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Set, Tuple
-from sqlalchemy.orm import Session
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 from app.core.errors import ValidationError
 from app.core.logging import get_logger
-from app.models.entities import Place, Trip
+from app.repositories.base import EntityDoc
 from app.repositories.entities import NotificationRepository
 from app.repositories.trips import TripRepository
 from app.repositories.versions import VersionRepository
@@ -39,13 +38,13 @@ class OrchestratorPipeline:
     @classmethod
     def run_pipeline(
         cls,
-        db: Session,
-        trip: Trip,
+        db: Any,
+        trip: Any,
         base_itinerary: CanonicalItinerary,
         changeset: ChangeSet,
         created_by: str,
         change_summary: str,
-        catalog_places: List[Place]
+        catalog_places: List[Any]
     ) -> PipelineResult:
         place_by_id = {p.id: p for p in catalog_places}
 

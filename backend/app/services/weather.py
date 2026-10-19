@@ -2,9 +2,8 @@ import json
 import os
 import time
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Any, List, Optional
 import httpx
-from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.repositories.entities import CacheRepository
@@ -22,7 +21,7 @@ class WeatherService:
     @classmethod
     def get_forecast(
         cls,
-        db: Session,
+        db: Any,
         destination_id: str,
         lat: float,
         lng: float,

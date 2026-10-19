@@ -28,11 +28,10 @@ setup_logging()
 async def lifespan(app: FastAPI):
     # Startup: initialize database and seeds
     init_db()
-    db = SessionLocal()
     try:
-        CatalogService.load_seed_to_db(db)
-    finally:
-        db.close()
+        CatalogService.load_seed_to_db(SessionLocal())
+    except Exception as e:
+        pass
 
     # Start in-process background scheduler
     try:
@@ -63,6 +62,7 @@ origins = settings.CORS_ORIGINS if isinstance(settings.CORS_ORIGINS, list) else 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins or ["*"],
+    allow_origin_regex=r"^https?://([a-zA-Z0-9-]+\.)*vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

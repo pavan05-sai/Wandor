@@ -1,9 +1,7 @@
 import json
 import os
 import re
-from typing import Dict, List, Optional
-from sqlalchemy.orm import Session
-from app.models.entities import Place
+from typing import Any, Dict, List, Optional
 from app.repositories.places import PlaceRepository
 from app.schemas.places import DestinationSchema
 from app.services.geocoding import GeocodingService
@@ -17,7 +15,7 @@ class CatalogService:
     _dynamic_cache: Dict[str, DestinationSchema] = {}
 
     @classmethod
-    def get_destinations(cls, db: Optional[Session] = None) -> List[DestinationSchema]:
+    def get_destinations(cls, db: Optional[Any] = None) -> List[DestinationSchema]:
         """Return seed destinations along with any dynamically registered destinations."""
         dest_path = os.path.join(SEED_DIR, "destinations.json")
         destinations = []
@@ -34,7 +32,7 @@ class CatalogService:
         return destinations
 
     @classmethod
-    def get_destination_by_id(cls, destination_id: str, db: Optional[Session] = None) -> Optional[DestinationSchema]:
+    def get_destination_by_id(cls, destination_id: str, db: Optional[Any] = None) -> Optional[DestinationSchema]:
         """Lookup destination by ID or dynamically resolve from geocoding."""
         # 1. Check seed destinations
         dests = cls.get_destinations()
@@ -55,7 +53,7 @@ class CatalogService:
 
     @classmethod
     def resolve_and_register_destination(
-        cls, db: Optional[Session], query: str
+        cls, db: Optional[Any], query: str
     ) -> Optional[DestinationSchema]:
         """Geocode and register any valid destination globally via free Nominatim."""
         geo_info = GeocodingService.geocode_destination(db, query)
@@ -86,7 +84,7 @@ class CatalogService:
         return dest_schema
 
     @classmethod
-    def search_destinations(cls, db: Optional[Session], query: str) -> List[DestinationSchema]:
+    def search_destinations(cls, db: Optional[Any], query: str) -> List[DestinationSchema]:
         """Search global destinations: checks seed presets first, then queries free Nominatim."""
         query_clean = query.lower().strip()
         results: List[DestinationSchema] = []
@@ -123,7 +121,7 @@ class CatalogService:
         return results[:8]
 
     @classmethod
-    def get_places_for_destination(cls, db: Session, destination_id: str) -> List[Place]:
+    def get_places_for_destination(cls, db: Any, destination_id: str) -> List[Any]:
         """Retrieve places for destination. Loads seeds or dynamically creates grounded catalog."""
         repo = PlaceRepository(db)
         places = repo.list_by_destination(destination_id)
@@ -156,7 +154,7 @@ class CatalogService:
         return []
 
     @classmethod
-    def load_seed_to_db(cls, db: Session, destination_id: Optional[str] = None):
+    def load_seed_to_db(cls, db: Any = None, destination_id: Optional[str] = None):
         repo = PlaceRepository(db)
         files = {
             "dest_goa": "places_goa.json",

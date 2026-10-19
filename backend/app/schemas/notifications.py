@@ -1,11 +1,11 @@
-from typing import Optional
+from typing import Optional, Union
 from pydantic import BaseModel
 
 
 class NotificationResponse(BaseModel):
-    id: int
-    user_id: int
-    trip_id: Optional[int] = None
+    id: Union[int, str]
+    user_id: Union[int, str]
+    trip_id: Optional[Union[int, str]] = None
     type: str
     title: str
     body: str

@@ -35,7 +35,7 @@ export function App() {
   const [user, setUser] = useState<User | null>(null);
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [trips, setTrips] = useState<TripSummary[]>([]);
-  const [currentTripId, setCurrentTripId] = useState<number | null>(null);
+  const [currentTripId, setCurrentTripId] = useState<number | string | null>(null);
   const [currentItinerary, setCurrentItinerary] = useState<CanonicalItinerary | null>(null);
   const [versions, setVersions] = useState<VersionSummary[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -107,7 +107,7 @@ export function App() {
     }
   };
 
-  const loadTripDetails = async (id: number) => {
+  const loadTripDetails = async (id: number | string) => {
     try {
       const res = await api.getTrip(id);
       setCurrentTripId(id);

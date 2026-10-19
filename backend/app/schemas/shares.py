@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 from pydantic import BaseModel, Field
 
 
@@ -23,12 +23,12 @@ class EventSimulateRequest(BaseModel):
 
 
 class TravelEventResponse(BaseModel):
-    id: int
-    trip_id: int
+    id: Union[int, str]
+    trip_id: Union[int, str]
     type: str
     day_id: Optional[str] = None
     severity: str
-    payload: Dict[str, Any]
+    payload: Optional[Dict[str, Any]] = None
     source: str
     handled_version: Optional[int] = None
     created_at: str

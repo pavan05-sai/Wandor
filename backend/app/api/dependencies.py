@@ -1,17 +1,17 @@
+from typing import Any, Union
 from fastapi import Depends
-from sqlalchemy.orm import Session
 from app.core.errors import NotFoundError, UnauthorizedError
 from app.core.security import get_current_user_id
 from app.models.database import get_db
-from app.models.entities import Trip, User
+from app.repositories.base import EntityDoc
 from app.repositories.trips import TripRepository
 from app.repositories.users import UserRepository
 
 
 def get_current_user(
-    user_id: int = Depends(get_current_user_id),
-    db: Session = Depends(get_db)
-) -> User:
+    user_id: str = Depends(get_current_user_id),
+    db: Any = Depends(get_db)
+) -> EntityDoc:
     repo = UserRepository(db)
     user = repo.get_by_id(user_id)
     if not user:
@@ -20,10 +20,10 @@ def get_current_user(
 
 
 def get_owned_trip(
-    trip_id: int,
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-) -> Trip:
+    trip_id: str,
+    user: EntityDoc = Depends(get_current_user),
+    db: Any = Depends(get_db)
+) -> EntityDoc:
     repo = TripRepository(db)
     trip = repo.get_by_id_and_user(trip_id=trip_id, user_id=user.id)
     if not trip:

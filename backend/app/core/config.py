@@ -8,21 +8,25 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEMO_MODE: str = "auto"  # "auto", "on", "off"
 
-    # Database
+    # MongoDB (primary database)
+    MONGODB_URI: str = ""
+    MONGODB_DB_NAME: str = "wandor"
+
+    # Legacy SQLite (kept for migration reference only — do not use in production)
     DATABASE_URL: str = "sqlite:///./travel_planner.db"
 
     # Security
-    SECRET_KEY: str = "travel-planner-super-secret-key-change-in-prod"
-    JWT_SECRET: str = "travel-planner-jwt-secret-key-change-in-prod"
+    SECRET_KEY: str = "change-this-secret-key-in-production-min-32-chars"
+    JWT_SECRET: str = "change-this-jwt-secret-in-production-min-32-chars"
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
 
     # AI / LLM
     LLM_PROVIDER: str = "gemini"  # "gemini" or "replay"
     GEMINI_API_KEY: str = ""
-    LLM_MODEL: str = "gemini-1.5-flash"
-    LLM_TIMEOUT_SECONDS: int = 25
-    LLM_MAX_REPAIR_ATTEMPTS: int = 1
+    LLM_MODEL: str = "gemini-2.0-flash"
+    LLM_TIMEOUT_SECONDS: int = 30
+    LLM_MAX_REPAIR_ATTEMPTS: int = 2
 
     # CORS
     CORS_ORIGINS: Union[str, List[str]] = "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173"

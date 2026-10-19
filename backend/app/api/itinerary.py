@@ -1,14 +1,13 @@
 from datetime import datetime
 from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy.orm import Session
 from app.api.dependencies import get_owned_trip
 from app.core.errors import NotFoundError, ValidationError
 from app.models.database import get_db
-from app.models.entities import Trip
 from app.orchestrator.context import build_agent_context
 from app.orchestrator.orchestrator import Orchestrator
 from app.orchestrator.pipeline import OrchestratorPipeline
+from app.repositories.base import EntityDoc
 from app.repositories.places import PlaceRepository
 from app.repositories.trips import TripRepository
 from app.repositories.versions import VersionRepository
@@ -21,11 +20,17 @@ from app.workers.diff import ItineraryDiffEngine
 router = APIRouter(prefix="/trips/{trip_id}", tags=["Itinerary"])
 
 
+def _iso(dt: Any) -> str:
+    if hasattr(dt, "isoformat"):
+        return dt.isoformat()
+    return str(dt or "")
+
+
 @router.post("/generate", status_code=status.HTTP_200_OK)
 def generate_itinerary(
     regenerate: bool = Query(default=False),
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     itinerary, trace, alternatives = Orchestrator.generate_trip(db, trip.id, regenerate=regenerate)
     return success_response({
@@ -37,8 +42,8 @@ def generate_itinerary(
 
 @router.get("/versions")
 def list_versions(
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     version_repo = VersionRepository(db)
     versions = version_repo.list_by_trip(trip.id)
@@ -48,7 +53,7 @@ def list_versions(
             "parent_version": v.parent_version,
             "created_by": v.created_by,
             "change_summary": v.change_summary,
-            "created_at": v.created_at.isoformat()
+            "created_at": _iso(v.created_at)
         }
         for v in versions
     ])
@@ -57,8 +62,8 @@ def list_versions(
 @router.get("/versions/{version_num}")
 def get_version(
     version_num: int,
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     version_repo = VersionRepository(db)
     v = version_repo.get_by_version(trip.id, version_num)
@@ -71,8 +76,8 @@ def get_version(
 def get_version_diff(
     from_version: int = Query(alias="from"),
     to_version: int = Query(alias="to"),
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     version_repo = VersionRepository(db)
     v_from = version_repo.get_by_version(trip.id, from_version)
@@ -91,23 +96,23 @@ def get_version_diff(
 @router.post("/versions/{version_num}/revert")
 def revert_version(
     version_num: int,
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     reverted_it = Orchestrator.revert_trip(db, trip.id, version_num)
-    return success_response({
-        "itinerary": reverted_it.model_dump(),
-        "reverted_to": version_num,
-        "current_version": reverted_it.version
-    })
+    res_dict = reverted_it.model_dump()
+    res_dict["itinerary"] = reverted_it.model_dump()
+    res_dict["reverted_to"] = version_num
+    res_dict["current_version"] = reverted_it.version
+    return success_response(res_dict)
 
 
 @router.patch("/items/{item_id}")
 def edit_item(
     item_id: str,
     op_req: Dict[str, Any],
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     """Manual item edits: lock, unlock, remove, move, or update booking ref."""
     ctx = build_agent_context(db, trip.id)
@@ -165,8 +170,8 @@ def edit_item(
 @router.post("/alternatives/{alt_id}/apply")
 def apply_alternative(
     alt_id: str,
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     ctx = build_agent_context(db, trip.id)
     if not ctx.itinerary:
@@ -204,8 +209,8 @@ def apply_alternative(
 @router.patch("/settings")
 def update_trip_settings(
     settings_in: TripSettingsUpdate,
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     ctx = build_agent_context(db, trip.id)
     if not ctx.itinerary:
@@ -242,8 +247,8 @@ def update_trip_settings(
 @router.post("/compiler/parse")
 def compile_unstructured_text(
     req: Dict[str, Any],
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     from app.services.compiler import ItineraryCompilerService
     text = req.get("text", "")
@@ -263,8 +268,8 @@ def compile_unstructured_text(
 @router.post("/compiler/apply")
 def apply_compiled_items(
     req: Dict[str, Any],
-    trip: Trip = Depends(get_owned_trip),
-    db: Session = Depends(get_db)
+    trip: EntityDoc = Depends(get_owned_trip),
+    db: Any = Depends(get_db)
 ):
     items = req.get("items", [])
     if not items:
@@ -281,7 +286,6 @@ def apply_compiled_items(
         target_day_id = it_dict.get("day_id") or "day_1"
         target_day = next((d for d in target_it.days if d.id == target_day_id), target_it.days[0])
 
-        new_item = CanonicalItinerary.model_validate(target_it.model_dump())  # validate clone
         from app.schemas.itinerary import Coordinates, ItineraryItem, ItemProvenance
         item_obj = ItineraryItem(
             id=it_dict.get("id") or f"imp_{int(datetime.now().timestamp())}",
@@ -318,4 +322,3 @@ def apply_compiled_items(
         "added_count": len(added_names),
         "version": new_version
     })
-

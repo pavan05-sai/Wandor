@@ -1,8 +1,8 @@
+from typing import Any
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user
 from app.models.database import get_db
-from app.models.entities import User
+from app.repositories.base import EntityDoc
 from app.repositories.users import UserRepository
 from app.schemas.auth import UserResponse
 from app.schemas.common import success_response
@@ -11,15 +11,21 @@ from app.schemas.preferences import PreferencesSchema
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
+def _iso(dt: Any) -> str:
+    if hasattr(dt, "isoformat"):
+        return dt.isoformat()
+    return str(dt or "")
+
+
 @router.get("/me")
-def get_me(user: User = Depends(get_current_user)):
+def get_me(user: EntityDoc = Depends(get_current_user)):
     return success_response(
-        UserResponse(id=user.id, email=user.email, display_name=user.display_name, created_at=user.created_at.isoformat())
+        UserResponse(id=user.id, email=user.email, display_name=user.display_name, created_at=_iso(user.created_at))
     )
 
 
 @router.get("/me/preferences")
-def get_my_preferences(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_my_preferences(user: EntityDoc = Depends(get_current_user), db: Any = Depends(get_db)):
     repo = UserRepository(db)
     pref = repo.get_preferences(user.id)
     if not pref:
@@ -40,8 +46,8 @@ def get_my_preferences(user: User = Depends(get_current_user), db: Session = Dep
 @router.put("/me/preferences")
 def update_my_preferences(
     pref_in: PreferencesSchema,
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    user: EntityDoc = Depends(get_current_user),
+    db: Any = Depends(get_db)
 ):
     repo = UserRepository(db)
     updated = repo.update_preferences(user.id, pref_in.model_dump())

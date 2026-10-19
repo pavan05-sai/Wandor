@@ -1,7 +1,6 @@
 import hashlib
 import json
 from typing import Any, Dict, Optional
-from sqlalchemy.orm import Session
 from app.repositories.entities import CacheRepository
 
 
@@ -12,16 +11,18 @@ def compute_prompt_hash(model: str, prompt: str, system_instruction: Optional[st
 
 class LLMResponseCache:
     @classmethod
-    def get(cls, db: Session, model: str, prompt: str, system_instruction: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def get(cls, db: Any, model: str, prompt: str, system_instruction: Optional[str] = None) -> Optional[Dict[str, Any]]:
         prompt_hash = compute_prompt_hash(model, prompt, system_instruction)
         repo = CacheRepository(db)
-        cached = repo.get(f"llm:{prompt_hash}")
+        cached = repo.get(f"llm:{prompt_hash}", provider="llm")
         if cached:
-            return cached["value"]
+            if isinstance(cached, dict) and "value" in cached:
+                return cached["value"]
+            return cached
         return None
 
     @classmethod
-    def set(cls, db: Session, model: str, prompt: str, system_instruction: Optional[str], response_json: Any, ttl_seconds: int = 86400 * 7):
+    def set(cls, db: Any, model: str, prompt: str, system_instruction: Optional[str], response_json: Any, ttl_seconds: int = 86400 * 7):
         prompt_hash = compute_prompt_hash(model, prompt, system_instruction)
         repo = CacheRepository(db)
-        repo.set(f"llm:{prompt_hash}", provider="llm", value_json=response_json, ttl_seconds=ttl_seconds)
+        repo.set(f"llm:{prompt_hash}", provider="llm", value=response_json, ttl_seconds=ttl_seconds)

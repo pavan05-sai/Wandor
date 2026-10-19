@@ -1,4 +1,4 @@
-import json
+﻿import json
 import os
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from app.core.config import settings
@@ -21,12 +21,28 @@ def load_prompt_file(filename: str) -> str:
 
 
 def get_llm_provider() -> LLMProvider:
-    if settings.DEMO_MODE == "on" or settings.LLM_PROVIDER == "replay" or not settings.GEMINI_API_KEY:
+    """
+    Return the appropriate LLM provider.
+    - Uses Gemini if GEMINI_API_KEY is set and LLM_PROVIDER is 'gemini'.
+    - Falls back to ReplayProvider only when DEMO_MODE is explicitly 'on'
+      or when LLM_PROVIDER is explicitly 'replay'.
+    - NEVER silently falls back to fake data when a real key is provided
+      but the request fails — errors are propagated to callers.
+    """
+    if settings.DEMO_MODE == "on" or settings.LLM_PROVIDER == "replay":
+        logger.info("Using ReplayProvider (demo/replay mode enabled).")
         return ReplayProvider()
-    try:
-        return GeminiProvider()
-    except Exception:
+
+    if not settings.GEMINI_API_KEY:
+        logger.warning(
+            "GEMINI_API_KEY is not set. "
+            "Using ReplayProvider with demonstration data. "
+            "Set GEMINI_API_KEY to enable real AI-generated itineraries."
+        )
         return ReplayProvider()
+
+    # Real Gemini — errors from this provider will propagate to callers
+    return GeminiProvider()
 
 
 class BaseAgent:
@@ -43,22 +59,19 @@ class BaseAgent:
     ) -> Tuple[Dict[str, Any], List[str]]:
         trace: List[str] = [f"Initialized {self.name} agent"]
 
-        # If using ReplayProvider or offline, call provider directly
         if isinstance(self.llm, ReplayProvider):
-            trace.append("Using Replay provider for deterministic response")
+            trace.append("Using ReplayProvider for deterministic demonstration response.")
             result = self.llm.generate_json(prompt, system_instruction=self.system_instruction)
             return result, trace
 
-        # Real LLM call
-        trace.append(f"Executing reasoning loop with {len(tools)} allowlisted tools")
+        # Real Gemini call — do NOT silently catch and fallback
+        trace.append(f"Calling {settings.LLM_MODEL} via Gemini API...")
         try:
             result = self.llm.generate_json(prompt, system_instruction=self.system_instruction)
-            trace.append(f"Successfully generated structured response from {settings.LLM_MODEL}")
+            trace.append(f"Successfully generated structured response from {settings.LLM_MODEL}.")
             return result, trace
         except Exception as e:
-            trace.append(f"LLM call encountered error: {e}. Executing fallback repair.")
-            logger.warning(f"Error in {self.name} run_tool_loop: {e}")
-            replay = ReplayProvider()
-            result = replay.generate_json(prompt, system_instruction=self.system_instruction)
-            trace.append("Completed with fallback Replay provider")
-            return result, trace
+            # Log the real error and re-raise — do NOT silently return fake data
+            trace.append(f"Gemini API call failed: {e}")
+            logger.error(f"Error in {self.name} agent Gemini call: {e}")
+            raise

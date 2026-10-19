@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 
 
@@ -21,8 +21,8 @@ class ChatResponse(BaseModel):
 
 
 class ChatMessageResponse(BaseModel):
-    id: int
-    trip_id: int
+    id: Union[int, str]
+    trip_id: Union[int, str]
     role: str
     content: str
     intent: Optional[str] = None
